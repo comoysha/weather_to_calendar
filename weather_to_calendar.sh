@@ -5,9 +5,14 @@
 # 功能: 查询高德天气API，解析数据并创建日历事件
 
 # 配置参数
-API_KEY="23c87799138b09c5b8de14d81c4d7eea"
-CITY_CODE="330110"  # 余杭区代码
-CALENDAR_NAME="杭州天气存档"  # 默认日历名称，可根据需要修改
+CONFIG_FILE="$(dirname "$0")/weather_config.sh"
+if [ -f "$CONFIG_FILE" ]; then
+    # shellcheck source=/dev/null
+    . "$CONFIG_FILE"
+else
+    echo "错误: 未找到配置文件 $CONFIG_FILE" >&2
+    exit 1
+fi
 
 # 获取当前时间作为默认值
 CURRENT_HOUR=$(date "+%H")  # 当前小时
@@ -20,6 +25,11 @@ END_MINUTE="$CURRENT_MINUTE"  # 默认结束时间（当前分钟）
 
 # 获取当前日期和时间
 CURRENT_DATE=$(date "+%Y-%m-%d")
+CURRENT_TIMESTAMP=$(date "+%Y-%m-%d_%H%M")
+
+HISTORY_DIR="weather_history"
+CHART_GENERATOR="html_generator.py"
+CHART_OUTPUT="chart.html"
 
 # 函数：构建时间字符串
 build_time_strings() {
@@ -31,7 +41,7 @@ build_time_strings() {
 get_weather_info() {
     local api_url="https://restapi.amap.com/v3/weather/weatherInfo?Key=${API_KEY}&city=${CITY_CODE}&"
     
-    echo "正在查询天气信息..."
+    echo "正在查询天气信息..." >&2
     
     # 调用API并获取响应
     local response=$(curl -s --location --request GET "$api_url")
@@ -78,6 +88,18 @@ parse_weather_data() {
     echo "事件标题: $EVENT_TITLE"
 }
 
+# 函数：保存原始天气响应
+save_weather_history() {
+    local json_data="$1"
+    local output_dir="$HISTORY_DIR"
+    local output_file="${output_dir}/${CURRENT_TIMESTAMP}.json"
+
+    mkdir -p "$output_dir"
+    printf "%s" "$json_data" > "$output_file"
+
+    echo "已保存原始天气数据: $output_file"
+}
+
 # 函数：创建日历事件
 create_calendar_event() {
     echo "正在创建日历事件..."
@@ -106,6 +128,20 @@ end tell
     else
         echo "❌ 日历事件创建失败"
         exit 1
+    fi
+}
+
+# 函数：生成折线图
+generate_chart() {
+    if [ -f "$CHART_GENERATOR" ]; then
+        python3 "$CHART_GENERATOR" --input-dir "$HISTORY_DIR" --output "$CHART_OUTPUT"
+        if [ $? -eq 0 ]; then
+            echo "✅ chart.html 已更新"
+        else
+            echo "⚠️ chart.html 生成失败"
+        fi
+    else
+        echo "⚠️ 未找到 $CHART_GENERATOR，跳过图表生成"
     fi
 }
 
@@ -228,8 +264,10 @@ main() {
     
     # 执行主要流程
     local weather_data=$(get_weather_info)
+    save_weather_history "$weather_data"
     parse_weather_data "$weather_data"
     create_calendar_event
+    generate_chart
     
     echo ""
     echo "✅ 脚本执行完成!"

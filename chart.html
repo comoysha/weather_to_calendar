@@ -1,0 +1,300 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>杭州天气折线图</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@300;400;600&family=ZCOOL+XiaoWei&display=swap" rel="stylesheet" />
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    :root {
+      --bg-start: #f6f0e7;
+      --bg-end: #d7e6f2;
+      --card-bg: rgba(255, 255, 255, 0.85);
+      --text-main: #1b1f23;
+      --text-muted: #5a6670;
+      --line-6: #f06b42;
+      --line-12: #2b7bb9;
+      --line-20: #3a9c6f;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      font-family: "IBM Plex Sans", system-ui, sans-serif;
+      color: var(--text-main);
+      background: radial-gradient(circle at top left, #fff7eb, transparent 40%),
+                  radial-gradient(circle at top right, #e1f0ff, transparent 45%),
+                  linear-gradient(135deg, var(--bg-start), var(--bg-end));
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 32px 20px;
+    }
+
+    .card {
+      width: min(1100px, 100%);
+      background: var(--card-bg);
+      border-radius: 24px;
+      box-shadow: 0 24px 60px rgba(36, 44, 60, 0.18);
+      padding: 28px 32px 36px;
+      backdrop-filter: blur(12px);
+      animation: rise 0.7s ease-out;
+    }
+
+    @keyframes rise {
+      from { opacity: 0; transform: translateY(18px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    header {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 16px;
+      margin-bottom: 18px;
+    }
+
+    h1 {
+      margin: 0;
+      font-family: "ZCOOL XiaoWei", serif;
+      font-weight: 400;
+      font-size: clamp(28px, 3.2vw, 40px);
+      letter-spacing: 0.5px;
+    }
+
+    .meta {
+      font-size: 14px;
+      color: var(--text-muted);
+      line-height: 1.6;
+    }
+
+    .meta span {
+      display: inline-block;
+      margin-right: 16px;
+    }
+
+    .toolbar {
+      display: inline-flex;
+      gap: 12px;
+      padding: 6px;
+      border-radius: 999px;
+      background: rgba(27, 31, 35, 0.08);
+      margin: 8px 0 18px;
+    }
+
+    .tab {
+      border: none;
+      background: transparent;
+      color: var(--text-main);
+      font-size: 14px;
+      padding: 8px 16px;
+      border-radius: 999px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .tab.is-active {
+      background: #1b1f23;
+      color: #fff;
+      box-shadow: 0 10px 20px rgba(27, 31, 35, 0.2);
+    }
+
+    .chart-wrap {
+      position: relative;
+      height: 480px;
+    }
+
+    canvas {
+      width: 100% !important;
+      height: 100% !important;
+    }
+
+    @media (max-width: 720px) {
+      .card { padding: 22px; }
+      .chart-wrap { height: 360px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <header>
+      <h1>杭州天气温度记录</h1>
+      <div class="meta">
+        <span>更新于: 2025-12-31 12:55</span>
+        <span>06:00 记录 117 条</span>
+        <span>12:00 记录 128 条</span>
+        <span>20:00 记录 114 条</span>
+      </div>
+    </header>
+    <div class="toolbar">
+      <button class="tab is-active" data-mode="temperature">温度</button>
+      <button class="tab" data-mode="humidity">湿度</button>
+    </div>
+    <div class="chart-wrap">
+      <canvas id="weatherChart"></canvas>
+    </div>
+  </div>
+
+  <script>
+    const labels = ["2025-08-21", "2025-08-22", "2025-08-23", "2025-08-24", "2025-08-25", "2025-08-26", "2025-08-27", "2025-08-28", "2025-08-29", "2025-08-30", "2025-08-31", "2025-09-01", "2025-09-02", "2025-09-03", "2025-09-04", "2025-09-05", "2025-09-06", "2025-09-07", "2025-09-08", "2025-09-09", "2025-09-10", "2025-09-11", "2025-09-12", "2025-09-13", "2025-09-14", "2025-09-15", "2025-09-16", "2025-09-17", "2025-09-18", "2025-09-19", "2025-09-20", "2025-09-21", "2025-09-22", "2025-09-23", "2025-09-24", "2025-09-25", "2025-09-26", "2025-09-27", "2025-09-28", "2025-09-29", "2025-09-30", "2025-10-02", "2025-10-03", "2025-10-04", "2025-10-05", "2025-10-06", "2025-10-07", "2025-10-08", "2025-10-09", "2025-10-10", "2025-10-11", "2025-10-12", "2025-10-13", "2025-10-14", "2025-10-15", "2025-10-16", "2025-10-17", "2025-10-18", "2025-10-19", "2025-10-20", "2025-10-21", "2025-10-22", "2025-10-23", "2025-10-24", "2025-10-25", "2025-10-26", "2025-10-27", "2025-10-28", "2025-10-29", "2025-10-30", "2025-10-31", "2025-11-01", "2025-11-02", "2025-11-03", "2025-11-04", "2025-11-05", "2025-11-06", "2025-11-07", "2025-11-08", "2025-11-09", "2025-11-10", "2025-11-11", "2025-11-12", "2025-11-13", "2025-11-14", "2025-11-15", "2025-11-16", "2025-11-17", "2025-11-18", "2025-11-19", "2025-11-20", "2025-11-21", "2025-11-22", "2025-11-23", "2025-11-24", "2025-11-25", "2025-11-26", "2025-11-27", "2025-11-28", "2025-12-02", "2025-12-03", "2025-12-04", "2025-12-05", "2025-12-06", "2025-12-07", "2025-12-08", "2025-12-09", "2025-12-10", "2025-12-11", "2025-12-12", "2025-12-13", "2025-12-14", "2025-12-15", "2025-12-16", "2025-12-17", "2025-12-18", "2025-12-19", "2025-12-20", "2025-12-21", "2025-12-22", "2025-12-23", "2025-12-24", "2025-12-25", "2025-12-26", "2025-12-27", "2025-12-28", "2025-12-29", "2025-12-30", "2025-12-31"];
+    const temp06 = [29.0, null, null, null, null, null, 27.0, 28.0, 28.0, 28.0, 26.0, 26.0, 25.0, 23.0, 26.0, 27.0, 27.0, 26.0, 28.0, 25.0, 24.0, 24.0, 25.0, 25.0, 24.0, 23.0, 27.0, 28.0, 24.0, null, null, null, null, 24.0, null, 23.0, null, 25.0, 26.0, 25.0, 24.0, 28.0, 28.0, 23.0, 25.0, 26.0, 27.0, 24.0, 21.0, 22.0, 23.0, 24.0, 25.0, 20.0, 21.0, 22.0, 22.0, 22.0, 17.0, 16.0, 13.0, 13.0, 12.0, 13.0, 13.0, 15.0, 13.0, 14.0, 11.0, 16.0, 15.0, 15.0, 15.0, 11.0, 11.0, 12.0, 16.0, 16.0, 17.0, 15.0, 14.0, 15.0, 13.0, 14.0, 12.0, 11.0, 12.0, 15.0, 3.0, 3.0, 4.0, 7.0, 7.0, 8.0, 13.0, 10.0, 5.0, 11.0, 5.0, null, 9.0, 2.0, 7.0, 6.0, 8.0, 9.0, 5.0, 11.0, 11.0, 9.0, 8.0, 2.0, 3.0, 7.0, 9.0, 6.0, 10.0, 13.0, 6.0, 3.0, 8.0, 6.0, 4.0, 1.0, 2.0, 3.0, 5.0, 6.0, 5.0];
+    const temp12 = [35.0, 34.0, 34.0, 36.0, 36.0, 33.0, 35.0, 34.0, 35.0, 36.0, 34.0, 30.0, 31.0, 31.0, 32.0, 34.0, 35.0, 32.0, 35.0, 30.0, 31.0, 28.0, 33.0, 32.0, 30.0, 33.0, 34.0, 34.0, 27.0, 31.0, 21.0, 21.0, 22.0, 31.0, 28.0, 33.0, 32.0, 30.0, 33.0, 27.0, 27.0, 31.0, 28.0, 29.0, 32.0, 34.0, 28.0, 31.0, 29.0, 32.0, 31.0, 29.0, 26.0, 21.0, 28.0, 24.0, 28.0, 22.0, 19.0, 16.0, null, 16.0, 17.0, 18.0, 22.0, 17.0, 17.0, 20.0, 22.0, 18.0, 17.0, 19.0, 21.0, 18.0, 15.0, 17.0, 18.0, 16.0, 18.0, 16.0, 19.0, 17.0, 16.0, 17.0, 17.0, 21.0, 21.0, 10.0, 7.0, 10.0, 12.0, 15.0, 17.0, 17.0, 17.0, 13.0, 15.0, 13.0, 14.0, 14.0, 8.0, 9.0, 10.0, 15.0, 17.0, 14.0, 15.0, 17.0, 17.0, 13.0, 7.0, 7.0, 10.0, 15.0, 12.0, 13.0, 18.0, 19.0, 7.0, 8.0, 13.0, 7.0, 7.0, 6.0, 8.0, 12.0, 14.0, 10.0, 9.0];
+    const temp20 = [null, null, null, null, null, 29.0, 30.0, 31.0, 30.0, 30.0, 26.0, 26.0, 24.0, 28.0, 30.0, 30.0, 29.0, 30.0, 25.0, 25.0, 25.0, 26.0, 27.0, 25.0, 29.0, 29.0, 30.0, 22.0, null, null, null, null, 25.0, null, 27.0, null, 29.0, 29.0, 28.0, 25.0, null, 29.0, 25.0, 27.0, 28.0, 32.0, 26.0, 26.0, 24.0, 25.0, 29.0, 27.0, 22.0, 21.0, 26.0, 24.0, 25.0, 18.0, 17.0, 15.0, 14.0, 15.0, 15.0, 16.0, 17.0, 15.0, 15.0, 14.0, 17.0, 15.0, 16.0, 17.0, 17.0, 12.0, 14.0, 17.0, 17.0, 17.0, 16.0, 15.0, null, 14.0, 15.0, 15.0, 15.0, 14.0, 18.0, 7.0, 6.0, 7.0, 10.0, 13.0, 9.0, 15.0, 14.0, 9.0, 9.0, 8.0, null, 12.0, 5.0, 9.0, 6.0, 11.0, 14.0, 9.0, 10.0, 15.0, 13.0, 9.0, 4.0, 4.0, 6.0, 12.0, 8.0, 9.0, 14.0, 11.0, 5.0, 9.0, 9.0, 6.0, 4.0, 3.0, 6.0, 7.0, 13.0, 10.0, null];
+    const hum06 = [73.0, null, null, null, null, null, 76.0, 71.0, 70.0, 73.0, 77.0, 84.0, 90.0, 97.0, 87.0, 91.0, 84.0, 84.0, 89.0, 95.0, 95.0, 87.0, 90.0, 90.0, 95.0, 94.0, 86.0, 73.0, 96.0, null, null, null, null, 90.0, null, 96.0, null, 92.0, 94.0, 83.0, 90.0, 73.0, 74.0, 86.0, 95.0, 93.0, 88.0, 88.0, 89.0, 92.0, 95.0, 92.0, 94.0, 89.0, 92.0, 97.0, 89.0, 90.0, 87.0, 82.0, 75.0, 83.0, 78.0, 83.0, 86.0, 72.0, 82.0, 66.0, 80.0, 75.0, 97.0, 87.0, 74.0, 77.0, 83.0, 85.0, 89.0, 98.0, 98.0, 91.0, 95.0, 73.0, 80.0, 84.0, 77.0, 91.0, 93.0, 91.0, 73.0, 56.0, 55.0, 59.0, 65.0, 66.0, 58.0, 31.0, 59.0, 35.0, 46.0, null, 79.0, 53.0, 45.0, 62.0, 71.0, 74.0, 67.0, 75.0, 78.0, 74.0, 73.0, 59.0, 70.0, 59.0, 53.0, 83.0, 73.0, 68.0, 90.0, 80.0, 77.0, 97.0, 93.0, 61.0, 68.0, 63.0, 71.0, 82.0, 76.0];
+    const hum12 = [50.0, 51.0, 49.0, 42.0, 48.0, 57.0, 54.0, 49.0, 50.0, 48.0, 58.0, 70.0, 64.0, 67.0, 68.0, 55.0, 58.0, 67.0, 62.0, 74.0, 71.0, 76.0, 61.0, 69.0, 73.0, 70.0, 58.0, 52.0, 80.0, 68.0, 89.0, 82.0, 77.0, 69.0, 86.0, 68.0, 65.0, 72.0, 64.0, 77.0, 79.0, 65.0, 80.0, 73.0, 65.0, 55.0, 82.0, 65.0, 61.0, 56.0, 59.0, 71.0, 82.0, 86.0, 65.0, 84.0, 68.0, 90.0, 76.0, 74.0, null, 67.0, 60.0, 61.0, 51.0, 75.0, 61.0, 48.0, 53.0, 85.0, 98.0, 67.0, 49.0, 47.0, 69.0, 74.0, 85.0, 98.0, 95.0, 95.0, 59.0, 65.0, 73.0, 67.0, 64.0, 52.0, 58.0, 96.0, 40.0, 32.0, 30.0, 36.0, 42.0, 42.0, 49.0, 25.0, 34.0, 20.0, 29.0, 72.0, 63.0, 32.0, 41.0, 40.0, 43.0, 65.0, 49.0, 57.0, 49.0, 56.0, 93.0, 32.0, 40.0, 40.0, 54.0, 61.0, 46.0, 54.0, 82.0, 69.0, 64.0, 97.0, 53.0, 34.0, 48.0, 40.0, 42.0, 75.0, 57.0];
+    const hum20 = [null, null, null, null, null, 75.0, 71.0, 66.0, 71.0, 68.0, 78.0, 84.0, 97.0, 73.0, 68.0, 74.0, 74.0, 72.0, 92.0, 96.0, 88.0, 55.0, 87.0, 96.0, 68.0, 84.0, 71.0, 95.0, null, null, null, null, 81.0, null, 84.0, null, 71.0, 72.0, 80.0, 83.0, null, 76.0, 87.0, 82.0, 74.0, 59.0, 84.0, 79.0, 66.0, 81.0, 72.0, 79.0, 89.0, 88.0, 76.0, 87.0, 86.0, 96.0, 81.0, 69.0, 79.0, 65.0, 66.0, 65.0, 66.0, 80.0, 62.0, 69.0, 74.0, 96.0, 90.0, 59.0, 60.0, 64.0, 75.0, 78.0, 97.0, 98.0, 96.0, 97.0, null, 74.0, 78.0, 47.0, 65.0, 81.0, 68.0, 66.0, 35.0, 42.0, 38.0, 44.0, 50.0, 42.0, 54.0, 37.0, 60.0, 27.0, null, 65.0, 43.0, 36.0, 52.0, 57.0, 46.0, 73.0, 76.0, 63.0, 63.0, 71.0, 65.0, 42.0, 61.0, 46.0, 65.0, 80.0, 73.0, 76.0, 63.0, 78.0, 77.0, 97.0, 57.0, 57.0, 44.0, 66.0, 42.0, 72.0, null];
+    const weather06 = ["晴", "", "", "", "", "", "晴", "晴", "晴", "多云", "多云", "阴", "雾", "雾", "雾", "雾", "晴", "多云", "雾", "雾", "雾", "多云", "雾", "晴", "阴", "晴", "晴", "多云", "雾", "", "", "", "", "雾", "", "雾", "", "雾", "雾", "多云", "雾", "多云", "阴", "雾", "雾", "雾", "雾", "多云", "晴", "雾", "雾", "雾", "雾", "雾", "雾", "雾", "多云", "小雨", "多云", "多云", "阴", "多云", "多云", "多云", "晴", "阴", "雾", "阴", "晴", "小雨", "阵雨", "雾", "雾", "多云", "阴", "阴", "小雨", "小雨", "雾", "雾", "雾", "阴", "阴", "雾", "雾", "雾", "雾", "雾", "多云", "多云", "晴", "晴", "晴", "霾", "阴", "霾", "晴", "晴", "霾", "", "阴", "晴", "阴", "晴", "雾", "雾", "晴", "阴", "晴", "阴", "阴", "晴", "晴", "阴", "多云", "霾", "雾", "晴", "小雨", "晴", "阴", "小雨", "雾", "晴", "晴", "阴", "雾", "雾", "阴"];
+    const weather12 = ["晴", "晴", "晴", "晴", "晴", "阴", "晴", "晴", "晴", "晴", "多云", "阴", "多云", "多云", "多云", "晴", "晴", "晴", "晴", "阴", "阴", "阴", "晴", "晴", "多云", "晴", "晴", "晴", "阴", "晴", "多云", "阴", "多云", "阴", "阴", "多云", "晴", "雾", "晴", "雾", "雾", "多云", "雾", "雾", "晴", "晴", "雾", "晴", "晴", "晴", "晴", "雾", "雾", "雾", "晴", "雾", "多云", "小雨", "阴", "阴", "", "阴", "阴", "阴", "多云", "雾", "阴", "多云", "晴", "小雨", "雾", "霾", "晴", "阴", "阴", "雾", "小雨", "小雨", "雾", "小雨", "多云", "阴", "阴", "晴", "霾", "晴", "晴", "阵雨", "晴", "晴", "晴", "晴", "晴", "晴", "阴", "晴", "晴", "霾", "霾", "阴", "阴", "阴", "阴", "晴", "晴", "霾", "晴", "阴", "晴", "阴", "小雨", "晴", "晴", "阴", "霾", "霾", "霾", "多云", "阴", "阴", "阴", "小雨", "晴", "晴", "阴", "多云", "多云", "霾", "阴"];
+    const weather20 = ["", "", "", "", "", "晴", "晴", "晴", "晴", "阴", "阴", "大雨", "雾", "阴", "阴", "阴", "阴", "晴", "阴", "雾", "阴", "阴", "阴", "小雨", "阴", "晴", "阴", "小雨", "", "", "", "", "多云", "", "阴", "", "晴", "晴", "雾", "雾", "", "阴", "雾", "雾", "晴", "晴", "雾", "晴", "晴", "晴", "霾", "霾", "雾", "雾", "雾", "雾", "晴", "小雨", "阴", "阴", "阴", "多云", "晴", "晴", "阴", "阴", "阴", "晴", "阴", "小雨", "雾", "阴", "霾", "阴", "阴", "雾", "小雨", "雾", "小雨", "雾", "", "阴", "阴", "晴", "霾", "晴", "晴", "阴", "阴", "晴", "晴", "晴", "霾", "多云", "阴", "晴", "霾", "浮尘", "", "阴", "晴", "阴", "晴", "晴", "晴", "晴", "多云", "阴", "霾", "阴", "多云", "晴", "晴", "晴", "霾", "雾", "雾", "霾", "多云", "雾", "阴", "小雨", "晴", "多云", "晴", "晴", "阴", "雾", ""];
+
+    const ctx = document.getElementById('weatherChart');
+    const baseDatasets = [
+      {
+        label: '06:00',
+        borderColor: getComputedStyle(document.documentElement).getPropertyValue('--line-6').trim(),
+        backgroundColor: 'rgba(240, 107, 66, 0.18)',
+        tension: 0.35,
+        pointRadius: 3,
+        pointHoverRadius: 6,
+        spanGaps: false,
+      },
+      {
+        label: '12:00',
+        borderColor: getComputedStyle(document.documentElement).getPropertyValue('--line-12').trim(),
+        backgroundColor: 'rgba(43, 123, 185, 0.18)',
+        tension: 0.35,
+        pointRadius: 3,
+        pointHoverRadius: 6,
+        spanGaps: false,
+      },
+      {
+        label: '20:00',
+        borderColor: getComputedStyle(document.documentElement).getPropertyValue('--line-20').trim(),
+        backgroundColor: 'rgba(58, 156, 111, 0.18)',
+        tension: 0.35,
+        pointRadius: 3,
+        pointHoverRadius: 6,
+        spanGaps: false,
+      }
+    ];
+
+    const modeData = {
+      temperature: {
+        datasets: [temp06, temp12, temp20],
+        yTitle: '温度 (°C)',
+      },
+      humidity: {
+        datasets: [hum06, hum12, hum20],
+        yTitle: '湿度 (%)',
+      }
+    };
+
+    const humidityLookup = {
+      '06:00': hum06,
+      '12:00': hum12,
+      '20:00': hum20,
+    };
+
+    const weatherLookup = {
+      '06:00': weather06,
+      '12:00': weather12,
+      '20:00': weather20,
+    };
+
+    const buildDatasets = (mode) => baseDatasets.map((base, idx) => ({ ...base, data: modeData[mode].datasets[idx] }));
+
+    const updateTabs = (mode) => {
+      document.querySelectorAll('.tab').forEach((tab) => {
+        tab.classList.toggle('is-active', tab.dataset.mode === mode);
+      });
+    };
+
+    const chart = new Chart(ctx, {
+      type: 'line',
+      data: {
+        labels,
+        datasets: buildDatasets('temperature')
+      },
+      options: {
+        maintainAspectRatio: false,
+        interaction: {
+          mode: 'index',
+          intersect: false,
+        },
+        scales: {
+          y: {
+            title: {
+              display: true,
+              text: '温度 (°C)'
+            },
+            grid: {
+              color: 'rgba(120, 130, 140, 0.18)'
+            },
+            ticks: {
+              callback: (value) => value
+            }
+          },
+          x: {
+            grid: {
+              display: false
+            }
+          }
+        },
+        plugins: {
+          legend: {
+            position: 'top',
+            labels: {
+              usePointStyle: true,
+              pointStyle: 'circle'
+            }
+          },
+          tooltip: {
+            callbacks: {
+              label: (context) => {
+                const suffix = chart.$mode === 'humidity' ? '%' : '°C';
+                const value = context.parsed.y ?? '无数据';
+                return ` ${context.dataset.label}: ${value}${suffix}`;
+              },
+              afterLabel: (context) => {
+                const label = context.dataset.label;
+                const idx = context.dataIndex;
+                const humidity = humidityLookup[label]?.[idx];
+                const humText = humidity === null || humidity === undefined ? '无数据' : `${humidity}%`;
+                const weather = weatherLookup[label]?.[idx] || '未知';
+                return ` 湿度: ${humText}  天气: ${weather}`;
+              }
+            }
+          }
+        },
+        animation: {
+          duration: 1200,
+          easing: 'easeOutQuart'
+        }
+      }
+    });
+
+    chart.$mode = 'temperature';
+
+    const setMode = (mode) => {
+      chart.$mode = mode;
+      chart.data.datasets = buildDatasets(mode);
+      chart.options.scales.y.title.text = modeData[mode].yTitle;
+      chart.options.scales.y.ticks.callback = (value) => mode === 'humidity' ? `${value}%` : value;
+      chart.update();
+      updateTabs(mode);
+    };
+
+    document.querySelectorAll('.tab').forEach((tab) => {
+      tab.addEventListener('click', () => setMode(tab.dataset.mode));
+    });
+
+    updateTabs('temperature');
+  </script>
+</body>
+</html>
