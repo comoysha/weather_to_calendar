@@ -1,9 +1,12 @@
+# 临时脚本,用来把 mac calendar 里的 2025-08-21~2025-12-31 的信息拉到本地
+# 后续如果有问题,可以把START_DATE改了重新运行
+
 #!/bin/bash
 
 set -euo pipefail
 
 CALENDAR_NAME="杭州天气存档"
-START_DATE="2025-08-21"
+START_DATE="2026-01-01"
 OUTPUT_DIR="weather_history"
 CITY_CODE="330110"
 CITY_NAME="杭州"

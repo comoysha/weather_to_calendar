@@ -5,7 +5,8 @@
 # 功能: 查询高德天气API，解析数据并创建日历事件
 
 # 配置参数
-CONFIG_FILE="$(dirname "$0")/weather_config.sh"
+BASE_DIR="$(cd "$(dirname "$0")" && pwd)"
+CONFIG_FILE="$BASE_DIR/weather_config.sh"
 if [ -f "$CONFIG_FILE" ]; then
     # shellcheck source=/dev/null
     . "$CONFIG_FILE"
@@ -27,9 +28,9 @@ END_MINUTE="$CURRENT_MINUTE"  # 默认结束时间（当前分钟）
 CURRENT_DATE=$(date "+%Y-%m-%d")
 CURRENT_TIMESTAMP=$(date "+%Y-%m-%d_%H%M")
 
-HISTORY_DIR="weather_history"
-CHART_GENERATOR="html_generator.py"
-CHART_OUTPUT="chart.html"
+HISTORY_DIR="$BASE_DIR/weather_history"
+CHART_GENERATOR="$BASE_DIR/html_generator.py"
+CHART_OUTPUT="$BASE_DIR/chart.html"
 
 # 函数：构建时间字符串
 build_time_strings() {
@@ -266,8 +267,8 @@ main() {
     local weather_data=$(get_weather_info)
     save_weather_history "$weather_data"
     parse_weather_data "$weather_data"
-    create_calendar_event
     generate_chart
+    create_calendar_event
     
     echo ""
     echo "✅ 脚本执行完成!"
