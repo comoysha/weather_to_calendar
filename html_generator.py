@@ -87,11 +87,13 @@ def build_chart_data(history):
 def render_html(labels, years, base_year, temp_series, hum_series, weather_series, output_path):
     now_str = datetime.now().strftime("%Y-%m-%d %H:%M")
     latest_year = years[-1] if years else ""
+    preferred_years = [year for year in ("2025", "2026") if year in years]
+    default_years = preferred_years or ([latest_year] if latest_year else [])
     counts = {}
     if latest_year:
         counts = {hour: sum(1 for v in temp_series[latest_year][hour] if v is not None) for hour in temp_series[latest_year]}
     year_controls = "\n".join(
-        f"<label class=\"year-chip\"><input type=\"checkbox\" value=\"{year}\"{' checked' if year == latest_year else ''}><span>{year}</span></label>"
+        f"<label class=\"year-chip\"><input type=\"checkbox\" value=\"{year}\"{' checked' if year in default_years else ''}><span>{year}</span></label>"
         for year in years
     )
 
@@ -279,10 +281,10 @@ def render_html(labels, years, base_year, temp_series, hum_series, weather_serie
       {year_controls}
     </div>
     <div class=\"range-filter\">
-      <button class=\"tab is-active\" data-range=\"full\">全年</button>
+      <button class=\"tab\" data-range=\"full\">全年</button>
       <button class=\"tab\" data-range=\"first-half\">上半年</button>
       <button class=\"tab\" data-range=\"second-half\">下半年</button>
-      <button class=\"tab\" data-range=\"last-3-months\">最近 3 个月</button>
+      <button class=\"tab is-active\" data-range=\"last-3-months\">最近 3 个月</button>
     </div>
     <div class=\"toolbar\">
       <button class=\"tab is-active\" data-mode=\"temperature\">温度</button>
@@ -299,6 +301,7 @@ def render_html(labels, years, base_year, temp_series, hum_series, weather_serie
     const labelDays = labels.map((label) => Number(label.split('-')[1]));
     const years = {json.dumps(years)};
     const latestYear = {json.dumps(latest_year)};
+    const defaultYears = {json.dumps(default_years)};
     const baseYear = {base_year};
     const tempByYear = {json.dumps(temp_series)};
     const humByYear = {json.dumps(hum_series)};
@@ -369,7 +372,7 @@ def render_html(labels, years, base_year, temp_series, hum_series, weather_serie
       type: 'line',
       data: {{
         labels,
-        datasets: buildDatasets('temperature', latestYear ? [latestYear] : [])
+        datasets: buildDatasets('temperature', defaultYears)
       }},
       options: {{
         maintainAspectRatio: false,
@@ -436,8 +439,8 @@ def render_html(labels, years, base_year, temp_series, hum_series, weather_serie
     }});
 
     chart.$mode = 'temperature';
-    chart.$range = 'full';
-    const selectedYears = new Set(latestYear ? [latestYear] : []);
+    chart.$range = 'last-3-months';
+    const selectedYears = new Set(defaultYears);
 
     const dayOfYear = (year, month, day) => {{
       const date = new Date(year, month - 1, day);
@@ -468,7 +471,16 @@ def render_html(labels, years, base_year, temp_series, hum_series, weather_serie
         if (startDoy <= endDoy) {{
           return labelDayOfYear.map((doy, idx) => (doy >= startDoy && doy <= endDoy) ? idx : null).filter((v) => v !== null);
         }}
-        return labelDayOfYear.map((doy, idx) => (doy >= startDoy || doy <= endDoy) ? idx : null).filter((v) => v !== null);
+        const tail = [];
+        const head = [];
+        labelDayOfYear.forEach((doy, idx) => {{
+          if (doy >= startDoy) {{
+            tail.push(idx);
+          }} else if (doy <= endDoy) {{
+            head.push(idx);
+          }}
+        }});
+        return tail.concat(head);
       }}
       return labels.map((_, idx) => idx);
     }};
@@ -506,7 +518,7 @@ def render_html(labels, years, base_year, temp_series, hum_series, weather_serie
     }});
 
     updateTabs('temperature');
-    updateRangeTabs('full');
+    updateRangeTabs('last-3-months');
 
     document.querySelectorAll('.year-chip input').forEach((input) => {{
       input.addEventListener('change', () => {{
@@ -531,7 +543,7 @@ def render_html(labels, years, base_year, temp_series, hum_series, weather_serie
       }});
     }});
 
-    applyRange('full');
+    applyRange('last-3-months');
   </script>
 </body>
 </html>"""
