@@ -315,7 +315,48 @@ def render_html(labels, years, base_year, temp_series, hum_series, weather_serie
       '12': getComputedStyle(document.documentElement).getPropertyValue('--line-12').trim(),
       '20': getComputedStyle(document.documentElement).getPropertyValue('--line-20').trim(),
     }};
-    const dashStyles = [[0, 0], [8, 5], [2, 3], [12, 6, 2, 6]];
+    const minAlpha = 0.35;
+    const alphaStep = 0.55;
+
+    const parseColor = (color) => {{
+      const rgbMatch = color.match(/rgba?\\((\\d+),\\s*(\\d+),\\s*(\\d+)/i);
+      if (rgbMatch) {{
+        return {{
+          r: Number(rgbMatch[1]),
+          g: Number(rgbMatch[2]),
+          b: Number(rgbMatch[3])
+        }};
+      }}
+      if (color.startsWith('#')) {{
+        let hex = color.slice(1);
+        if (hex.length === 3) {{
+          hex = hex.split('').map((c) => c + c).join('');
+        }}
+        if (hex.length === 6) {{
+          const r = parseInt(hex.slice(0, 2), 16);
+          const g = parseInt(hex.slice(2, 4), 16);
+          const b = parseInt(hex.slice(4, 6), 16);
+          return {{ r, g, b }};
+        }}
+      }}
+      return {{ r: 0, g: 0, b: 0 }};
+    }};
+
+    const withAlpha = (color, alpha) => {{
+      const rgb = parseColor(color);
+      return `rgba(${{rgb.r}}, ${{rgb.g}}, ${{rgb.b}}, ${{alpha}})`;
+    }};
+
+    const buildYearAlphaMap = (selectedYears) => {{
+      const ordered = [...selectedYears].sort((a, b) => Number(a) - Number(b));
+      const map = {{}};
+      ordered.forEach((year, index) => {{
+        const stepsFromLatest = ordered.length - 1 - index;
+        const alpha = Math.max(minAlpha, 1 - alphaStep * stepsFromLatest);
+        map[year] = alpha;
+      }});
+      return map;
+    }};
 
     const modeData = {{
       temperature: {{
@@ -332,22 +373,23 @@ def render_html(labels, years, base_year, temp_series, hum_series, weather_serie
 
     const buildDatasets = (mode, selectedYears) => {{
       const datasets = [];
-      selectedYears.forEach((year, yearIndex) => {{
+      const alphaByYear = buildYearAlphaMap(selectedYears);
+      selectedYears.forEach((year) => {{
+        const yearAlpha = alphaByYear[year] ?? 1;
         hours.forEach((hour) => {{
-          const color = baseColors[hour];
+          const color = withAlpha(baseColors[hour], yearAlpha);
           datasets.push({{
             label: `${{hourLabels[hour]}} · ${{year}}`,
             data: modeData[mode].source?.[year]?.[hour] ?? [],
             borderColor: color,
             backgroundColor: color,
             tension: 0.35,
-            pointRadius: 2,
-            pointHoverRadius: 5,
-            pointHitRadius: 12,
+            pointRadius: 0,
+            pointHoverRadius: 0,
+            pointHitRadius: 8,
             spanGaps: false,
             fill: false,
-            borderWidth: 2,
-            borderDash: dashStyles[yearIndex % dashStyles.length],
+            borderWidth: 1,
             _year: year,
             _hour: hour,
           }});
