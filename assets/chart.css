@@ -1,0 +1,196 @@
+:root {
+  --bg-start: #f6f0e7;
+  --bg-end: #d7e6f2;
+  --card-bg: rgba(255, 255, 255, 0.85);
+  --text-main: #1b1f23;
+  --text-muted: #5a6670;
+  --line-6: #f06b42;
+  --line-12: #2b7bb9;
+  --line-20: #3a9c6f;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 32px 20px;
+  color: var(--text-main);
+  font-family: "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+  background:
+    radial-gradient(circle at top left, #fff7eb, transparent 40%),
+    radial-gradient(circle at top right, #e1f0ff, transparent 45%),
+    linear-gradient(135deg, var(--bg-start), var(--bg-end));
+}
+
+.card {
+  width: min(1100px, 100%);
+  padding: 28px 32px 36px;
+  border-radius: 24px;
+  background: var(--card-bg);
+  box-shadow: 0 24px 60px rgba(36, 44, 60, 0.18);
+  backdrop-filter: blur(12px);
+}
+
+.header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 18px;
+}
+
+h1 {
+  margin: 0;
+  font-weight: 400;
+  font-size: clamp(28px, 3.2vw, 40px);
+  letter-spacing: 0.5px;
+  font-family: "STKaiti", "Kaiti SC", serif;
+}
+
+.meta {
+  font-size: 14px;
+  line-height: 1.7;
+  color: var(--text-muted);
+}
+
+.meta span {
+  display: inline-block;
+  margin-right: 16px;
+}
+
+.year-filter,
+.toolbar,
+.range-filter {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
+
+.year-filter {
+  margin: 6px 0 18px;
+  color: var(--text-muted);
+  font-size: 14px;
+}
+
+.control-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 18px;
+}
+
+.toolbar,
+.range-filter {
+  padding: 6px;
+  border-radius: 999px;
+  background: rgba(27, 31, 35, 0.08);
+}
+
+.tab,
+.year-chip {
+  border: none;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.tab {
+  padding: 8px 16px;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--text-main);
+  font-size: 14px;
+}
+
+.tab.is-active {
+  color: #fff;
+  background: #1b1f23;
+  box-shadow: 0 10px 20px rgba(27, 31, 35, 0.2);
+}
+
+.year-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 14px;
+  border-radius: 999px;
+  background: rgba(27, 31, 35, 0.08);
+  color: var(--text-main);
+}
+
+.year-chip input {
+  appearance: none;
+  width: 10px;
+  height: 10px;
+  border: 2px solid #1b1f23;
+  border-radius: 50%;
+  display: inline-block;
+}
+
+.year-chip input:checked {
+  background: #1b1f23;
+}
+
+.chart-wrap {
+  position: relative;
+  height: 480px;
+  overflow: hidden;
+  border-radius: 20px;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.72), rgba(246, 248, 251, 0.9));
+}
+
+#weatherChart {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+.chart-tooltip {
+  position: absolute;
+  z-index: 2;
+  max-width: 280px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: rgba(17, 20, 24, 0.92);
+  color: #fff;
+  font-size: 12px;
+  line-height: 1.6;
+  white-space: pre-line;
+  pointer-events: none;
+  opacity: 0;
+  transform: translateY(4px);
+  transition: opacity 0.12s ease, transform 0.12s ease;
+  box-shadow: 0 10px 24px rgba(17, 20, 24, 0.28);
+}
+
+.chart-tooltip.is-visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.chart-empty {
+  position: absolute;
+  inset: 0;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-muted);
+  font-size: 15px;
+}
+
+@media (max-width: 720px) {
+  .card {
+    padding: 22px;
+  }
+
+  .chart-wrap {
+    height: 360px;
+  }
+}

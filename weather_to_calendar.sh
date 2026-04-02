@@ -1,4 +1,7 @@
 #!/bin/bash
+set -u
+
+export TZ="Asia/Shanghai"
 
 # 天气查询并添加到日历的脚本
 # 作者: 自动生成
@@ -14,6 +17,23 @@ else
     echo "错误: 未找到配置文件 $CONFIG_FILE" >&2
     exit 1
 fi
+
+timestamp_now() {
+    date "+%Y-%m-%d %H:%M:%S %Z"
+}
+
+log_info() {
+    echo "[$(timestamp_now)] $*" >&2
+}
+
+log_error() {
+    echo "[$(timestamp_now)] $*" >&2
+}
+
+fail() {
+    log_error "$*"
+    exit 1
+}
 
 # 获取当前时间作为默认值
 CURRENT_HOUR=$(date "+%H")  # 当前小时
@@ -42,14 +62,13 @@ build_time_strings() {
 get_weather_info() {
     local api_url="https://restapi.amap.com/v3/weather/weatherInfo?Key=${API_KEY}&city=${CITY_CODE}&"
     
-    echo "正在查询天气信息..." >&2
+    log_info "正在查询天气信息..."
     
     # 调用API并获取响应
     local response=$(curl -s --location --request GET "$api_url")
     
     if [ $? -ne 0 ]; then
-        echo "错误: 无法连接到天气API"
-        exit 1
+        fail "无法连接到天气API"
     fi
     
     echo "$response"
@@ -63,8 +82,8 @@ parse_weather_data() {
     local status=$(echo "$json_data" | grep -o '"status":"[^"]*"' | cut -d'"' -f4)
     
     if [ "$status" != "1" ]; then
-        echo "错误: API返回状态异常"
-        echo "响应内容: $json_data"
+        log_error "API返回状态异常"
+        log_error "响应内容: $json_data"
         exit 1
     fi
     
@@ -74,19 +93,15 @@ parse_weather_data() {
     local humidity=$(echo "$json_data" | grep -o '"humidity":"[^"]*"' | cut -d'"' -f4)
     
     if [ -z "$temperature" ] || [ -z "$weather" ] || [ -z "$humidity" ]; then
-        echo "错误: 无法解析天气数据"
-        echo "响应内容: $json_data"
+        log_error "无法解析天气数据"
+        log_error "响应内容: $json_data"
         exit 1
     fi
     
     # 构建事件标题
     EVENT_TITLE="${temperature}°C，${weather}，${humidity}%"
     
-    echo "解析成功:"
-    echo "温度: ${temperature}°C"
-    echo "天气: $weather"
-    echo "湿度: ${humidity}%"
-    echo "事件标题: $EVENT_TITLE"
+    log_info "解析成功: 温度 ${temperature}°C, 天气 ${weather}, 湿度 ${humidity}%, 事件标题 ${EVENT_TITLE}"
 }
 
 # 函数：保存原始天气响应
@@ -95,15 +110,15 @@ save_weather_history() {
     local output_dir="$HISTORY_DIR"
     local output_file="${output_dir}/${CURRENT_TIMESTAMP}.json"
 
-    mkdir -p "$output_dir"
-    printf "%s" "$json_data" > "$output_file"
+    mkdir -p "$output_dir" || fail "创建目录失败: $output_dir"
+    printf "%s" "$json_data" > "$output_file" || fail "保存天气原始数据失败: $output_file"
 
-    echo "已保存原始天气数据: $output_file"
+    log_info "已保存原始天气数据: $output_file"
 }
 
 # 函数：创建日历事件
 create_calendar_event() {
-    echo "正在创建日历事件..."
+    log_info "正在创建日历事件..."
     
     # 构建AppleScript
     local apple_script="
@@ -123,12 +138,9 @@ end tell
     echo "$apple_script" | osascript
     
     if [ $? -eq 0 ]; then
-        echo "✅ 日历事件创建成功!"
-        echo "事件标题: $EVENT_TITLE"
-        echo "时间: $START_TIME"
+        log_info "日历事件创建成功: $EVENT_TITLE, 时间 ${START_TIME}"
     else
-        echo "❌ 日历事件创建失败"
-        exit 1
+        fail "日历事件创建失败"
     fi
 }
 
@@ -137,12 +149,12 @@ generate_chart() {
     if [ -f "$CHART_GENERATOR" ]; then
         python3 "$CHART_GENERATOR" --input-dir "$HISTORY_DIR" --output "$CHART_OUTPUT"
         if [ $? -eq 0 ]; then
-            echo "✅ chart.html 已更新"
+            log_info "chart.html 已更新"
         else
-            echo "⚠️ chart.html 生成失败"
+            fail "chart.html 生成失败"
         fi
     else
-        echo "⚠️ 未找到 $CHART_GENERATOR，跳过图表生成"
+        fail "未找到图表生成脚本: $CHART_GENERATOR"
     fi
 }
 
@@ -172,21 +184,18 @@ validate_time_format() {
     local param_name="$2"
     
     if [[ ! $time_str =~ ^[0-2][0-9]:[0-5][0-9]$ ]]; then
-        echo "错误: $param_name 格式不正确，应为 HH:MM 格式 (如: 08:30)"
-        exit 1
+        fail "$param_name 格式不正确，应为 HH:MM 格式 (如: 08:30)"
     fi
     
     local hour=$(echo "$time_str" | cut -d':' -f1)
     local minute=$(echo "$time_str" | cut -d':' -f2)
     
     if [ "$hour" -gt 23 ]; then
-        echo "错误: $param_name 小时数不能超过23"
-        exit 1
+        fail "$param_name 小时数不能超过23"
     fi
     
     if [ "$minute" -gt 59 ]; then
-        echo "错误: $param_name 分钟数不能超过59"
-        exit 1
+        fail "$param_name 分钟数不能超过59"
     fi
 }
 
@@ -239,7 +248,7 @@ main() {
                 exit 0
                 ;;
             *)
-                echo "未知选项: $1"
+                log_error "未知选项: $1"
                 show_help
                 exit 1
                 ;;
@@ -251,17 +260,15 @@ main() {
     
     # 检查必要参数
     if [ -z "$API_KEY" ]; then
-        echo "错误: 请设置API密钥"
-        exit 1
+        fail "请设置API密钥"
     fi
     
-    echo "=== 天气信息日历脚本 ==="
-    echo "城市代码: $CITY_CODE"
-    echo "日历名称: $CALENDAR_NAME"
-    echo "日期: $CURRENT_DATE"
-    echo "开始时间: $START_TIME"
-    echo "结束时间: $END_TIME"
-    echo ""
+    log_info "=== 天气信息日历脚本 ==="
+    log_info "城市代码: $CITY_CODE"
+    log_info "日历名称: $CALENDAR_NAME"
+    log_info "日期: $CURRENT_DATE"
+    log_info "开始时间: $START_TIME"
+    log_info "结束时间: $END_TIME"
     
     # 执行主要流程
     local weather_data=$(get_weather_info)
@@ -270,8 +277,7 @@ main() {
     generate_chart
     create_calendar_event
     
-    echo ""
-    echo "✅ 脚本执行完成!"
+    log_info "脚本执行完成"
 }
 
 # 执行主函数
