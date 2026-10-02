@@ -21,6 +21,8 @@
   const rangeFilter = document.getElementById("rangeFilter");
   const modeFilter = document.getElementById("modeFilter");
 
+  let chartGeometry = null;
+
   const rangeOptions = [
     { key: "full", label: "全年" },
     { key: "first-half", label: "上半年" },
@@ -224,9 +226,9 @@
     chartTooltip.classList.remove("is-visible");
   }
 
-  function showTooltip(event, text) {
+  function showTooltip(event, html) {
     const wrapRect = svg.parentElement.getBoundingClientRect();
-    chartTooltip.textContent = text;
+    chartTooltip.innerHTML = html;
     chartTooltip.classList.add("is-visible");
 
     const tooltipRect = chartTooltip.getBoundingClientRect();
@@ -247,7 +249,73 @@
     chartTooltip.style.top = `${top}px`;
   }
 
+  function hideGuide() {
+    const guide = svg.querySelector("#hoverGuide");
+    if (guide) {
+      guide.style.display = "none";
+    }
+  }
+
+  function formatValue(value) {
+    if (typeof value !== "number") {
+      return "—";
+    }
+    return Number.isInteger(value) ? String(value) : value.toFixed(1);
+  }
+
+  function buildTooltipCell(year, hour, rawIndex) {
+    const color = baseColors[hour];
+    const temperature = data.series.temperature[year]?.[hour]?.[rawIndex];
+    const humidity = data.series.humidity[year]?.[hour]?.[rawIndex];
+    const weather = data.series.weather[year]?.[hour]?.[rawIndex] || "";
+
+    const isHumidityMode = state.mode === "humidity";
+    const primary = isHumidityMode ? humidity : temperature;
+    const suffix = modeConfig[state.mode].suffix;
+    const primaryText = formatValue(primary) + (typeof primary === "number" ? suffix : "");
+
+    const secondary = [];
+    if (isHumidityMode) {
+      if (typeof temperature === "number") {
+        secondary.push(`${formatValue(temperature)}°C`);
+      }
+    } else if (typeof humidity === "number") {
+      secondary.push(`${formatValue(humidity)}%`);
+    }
+    if (weather) {
+      secondary.push(weather);
+    }
+    const secondaryText = secondary.join(" · ");
+
+    return `
+      <div class="cell-value" style="color:${color}">${primaryText}</div>
+      ${secondaryText ? `<div class="cell-sub">${escapeHtml(secondaryText)}</div>` : ""}
+    `;
+  }
+
+  function buildTooltipHtml(columnIndex) {
+    const rawIndex = state.indexMap[columnIndex];
+    const dateLabel = state.labels[columnIndex];
+    const years = [...state.selectedYears].sort((a, b) => Number(a) - Number(b));
+
+    const yearHeader = years.map((year) => `<th>${year}</th>`).join("");
+    const rows = data.hours.map((hour) => {
+      const cells = years.map((year) => `<td>${buildTooltipCell(year, hour, rawIndex)}</td>`).join("");
+      return `<tr><th class="row-label">${data.hourLabels[hour]}</th>${cells}</tr>`;
+    }).join("");
+
+    return `
+      <div class="tooltip-date">${escapeHtml(dateLabel)}</div>
+      <table class="tooltip-table">
+        <thead><tr><th></th>${yearHeader}</tr></thead>
+        <tbody>${rows}</tbody>
+      </table>
+    `;
+  }
+
   function renderChart() {
+    hideTooltip();
+    hideGuide();
     state.indexMap = getRangeIndices();
     state.labels = state.indexMap.map((index) => data.labels[index]);
 
@@ -265,6 +333,7 @@
     if (!numericValues.length) {
       chartEmpty.style.display = "flex";
       svg.innerHTML = "";
+      chartGeometry = null;
       hideTooltip();
       return;
     }
@@ -327,35 +396,7 @@
         return "";
       }
 
-      const markers = points.map((point, index) => {
-        if (!point) {
-          return "";
-        }
-        const rawIndex = state.indexMap[index];
-        const humidity = data.series.humidity[dataset.year]?.[dataset.hour]?.[rawIndex];
-        const weather = data.series.weather[dataset.year]?.[dataset.hour]?.[rawIndex] || "未知";
-        const detail = [
-          dataset.label,
-          `日期: ${dataset.year}-${state.labels[index]} ${data.hourLabels[dataset.hour]}`,
-          `${modeConfig[state.mode].title}: ${point.value}${suffix}`,
-          `湿度: ${humidity === null || humidity === undefined ? "无数据" : `${humidity}%`}`,
-          `天气: ${weather}`,
-        ].join("\n");
-        return `
-          <circle
-            cx="${point.x.toFixed(2)}"
-            cy="${point.y.toFixed(2)}"
-            r="7"
-            fill="transparent"
-            data-tooltip="${escapeHtml(detail)}"
-          ></circle>
-        `;
-      }).join("");
-
-      return `
-        <path d="${path}" fill="none" stroke="${dataset.color}" stroke-width="1.35" stroke-linecap="round" stroke-linejoin="round" />
-        ${markers}
-      `;
+      return `<path d="${path}" fill="none" stroke="${dataset.color}" stroke-width="1.35" stroke-linecap="round" stroke-linejoin="round" />`;
     }).join("");
 
     svg.innerHTML = `
@@ -366,19 +407,62 @@
       <text x="${margin.left}" y="${margin.top - 26}" fill="#5a6670" font-size="13">${modeConfig[state.mode].title}</text>
       ${legend}
       ${lines}
+      <line id="hoverGuide" x1="0" y1="0" x2="0" y2="0" stroke="rgba(27,31,35,0.28)" stroke-width="1" stroke-dasharray="3 3" style="display:none" pointer-events="none" />
       ${xAxis}
     `;
 
-    svg.querySelectorAll("[data-tooltip]").forEach((node) => {
-      node.addEventListener("mouseenter", (event) => {
-        showTooltip(event, node.dataset.tooltip || "");
-      });
-      node.addEventListener("mousemove", (event) => {
-        showTooltip(event, node.dataset.tooltip || "");
-      });
-      node.addEventListener("mouseleave", hideTooltip);
-    });
+    chartGeometry = { margin, innerWidth, xStep, labelCount: state.labels.length, width, height };
   }
+
+  svg.addEventListener("mousemove", (event) => {
+    if (!chartGeometry) {
+      return;
+    }
+    const { margin, innerWidth, xStep, labelCount, width, height } = chartGeometry;
+    const rect = svg.getBoundingClientRect();
+    if (!rect.width || !rect.height) {
+      return;
+    }
+
+    const scaleX = width / rect.width;
+    const x = (event.clientX - rect.left) * scaleX;
+    const y = (event.clientY - rect.top) * (height / rect.height);
+
+    const plotTop = margin.top;
+    const plotBottom = height - margin.bottom;
+    const plotLeft = margin.left;
+    const plotRight = labelCount > 1 ? margin.left + innerWidth : margin.left;
+
+    if (x < plotLeft || x > plotRight || y < plotTop || y > plotBottom) {
+      hideTooltip();
+      hideGuide();
+      return;
+    }
+
+    let columnIndex;
+    if (labelCount <= 1) {
+      columnIndex = 0;
+    } else {
+      columnIndex = Math.max(0, Math.min(labelCount - 1, Math.round((x - margin.left) / xStep)));
+    }
+
+    const guide = svg.querySelector("#hoverGuide");
+    if (guide) {
+      const gx = margin.left + xStep * columnIndex;
+      guide.setAttribute("x1", gx);
+      guide.setAttribute("x2", gx);
+      guide.setAttribute("y1", plotTop);
+      guide.setAttribute("y2", plotBottom);
+      guide.style.display = "";
+    }
+
+    showTooltip(event, buildTooltipHtml(columnIndex));
+  });
+
+  svg.addEventListener("mouseleave", () => {
+    hideTooltip();
+    hideGuide();
+  });
 
   renderMeta();
   renderYearFilter();

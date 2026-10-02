@@ -58,6 +58,7 @@ TZ=Asia/Shanghai ./recover_missing_weather_history.sh --start-date 2026-02-06 --
 - [weather_to_calendar.sh](/Users/xiayue/raycast_script/weather_to_calendar/weather_to_calendar.sh) 现在统一输出北京时间日志；保存 JSON、生成图表、创建目录等步骤失败时会立即退出，不再静默跳过。
 - 历史文件应为纯 JSON；图表生成器会兼容旧文件中“日志行 + JSON”这种脏数据，但新写入文件不再混入日志。
 - [com.xiayue.weather-to-calendar.plist](/Users/xiayue/raycast_script/weather_to_calendar/com.xiayue.weather-to-calendar.plist) 是 `launchd` 配置模板。
+- [com.xiayue.weather-chart-server.plist](/Users/xiayue/raycast_script/weather_to_calendar/com.xiayue.weather-chart-server.plist) 是本地图表服务配置，监听 `127.0.0.1:18020`。
 - [install_launchd.sh](/Users/xiayue/raycast_script/weather_to_calendar/install_launchd.sh) 会把配置安装到 `~/Library/LaunchAgents/` 并立即加载。
 - [uninstall_launchd.sh](/Users/xiayue/raycast_script/weather_to_calendar/uninstall_launchd.sh) 会卸载并移除 `~/Library/LaunchAgents/` 中的对应任务。
 - 运行日志会写到 [logs](/Users/xiayue/raycast_script/weather_to_calendar/logs) 目录。

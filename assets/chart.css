@@ -155,14 +155,13 @@ h1 {
 .chart-tooltip {
   position: absolute;
   z-index: 2;
-  max-width: 280px;
+  max-width: 420px;
   padding: 10px 12px;
   border-radius: 10px;
   background: rgba(17, 20, 24, 0.92);
   color: #fff;
   font-size: 12px;
   line-height: 1.6;
-  white-space: pre-line;
   pointer-events: none;
   opacity: 0;
   transform: translateY(4px);
@@ -173,6 +172,44 @@ h1 {
 .chart-tooltip.is-visible {
   opacity: 1;
   transform: translateY(0);
+}
+
+.tooltip-date {
+  margin-bottom: 6px;
+  font-weight: 600;
+  font-size: 13px;
+}
+
+.tooltip-table {
+  border-collapse: collapse;
+}
+
+.tooltip-table th,
+.tooltip-table td {
+  padding: 3px 8px;
+  text-align: center;
+  white-space: nowrap;
+}
+
+.tooltip-table thead th {
+  color: #cfd6dd;
+  font-weight: 500;
+}
+
+.tooltip-table th.row-label {
+  text-align: left;
+  color: #cfd6dd;
+  font-weight: 400;
+}
+
+.cell-value {
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.cell-sub {
+  font-size: 11px;
+  color: #cfd6dd;
 }
 
 .chart-empty {
